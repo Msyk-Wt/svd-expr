@@ -4,8 +4,8 @@ use nom::{
     branch::alt,
     combinator::{opt, map, map_res, recognize},
     multi::many1,
-    sequence::preceded,
-    character::complete::{one_of, digit0, digit1},
+    sequence::{preceded, delimited},
+    character::complete::{one_of, digit1},
     bytes::complete::{tag},
 };
 use super::*;
@@ -14,10 +14,24 @@ use super::*;
 /// 式
 pub fn expression(src: &str) -> IResult<&str, Expression> {
     alt((
-        map(literal, |used| Expression::Literal(used)),
+        factor,
     )).parse(src)
 }
 
+/// 因子
+pub fn factor(src: &str) -> IResult<&str, Expression> {
+
+    let priority = delimited(
+        tag("("),
+        factor,
+        tag(")"),
+    );
+
+    alt((
+        map(priority, |used| Expression::Priority(Box::new(used))),
+        map(literal, |used| Expression::Literal(used)),
+    )).parse(src)
+}
 
 /// リテラル
 pub fn literal(src: &str) -> IResult<&str, Value> {
@@ -26,7 +40,6 @@ pub fn literal(src: &str) -> IResult<&str, Value> {
         map(int_literal, |used| Value::Int(used)),
     )).parse(src)
 }
-
 
 /// 整数リテラル
 fn int_literal(src: &str) -> IResult<&str, i128> {
